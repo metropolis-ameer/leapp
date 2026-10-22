@@ -16,7 +16,7 @@
       <div class="opt-bar-middle-left-buttons">
 
         <ng-container
-          *ngIf="selectedSession.type === eSessionType.awsSsoRole || selectedSession.type === eSessionType.awsIamRoleFederated || selectedSession.type === eSessionType.awsIamRoleChained">
+          *ngIf="selectedSession.type === eSessionType.awsSsoRole || selectedSession.type === eSessionType.awsIamRoleFederated || selectedSession.type === eSessionType.awsIamRoleChained || selectedSession.type === eSessionType.awsCliLogin">
           <a class="icon-button open-web-console" [class.disabled]="isWebConsoleFetching" (click)="openAwsWebConsole();" matTooltip="Open Web Console">
             <i class="moon-Open-Web-Console"></i>
           </a>
@@ -25,10 +25,10 @@
           class="moon-Region"></i></a>
         <a class="icon-button" *ngIf="selectedSession.type !== eSessionType.azure" (click)="changeProfileModalOpen();"
            matTooltip="Change Named Profile"><i class="moon-User"></i></a>
-        <a class="icon-button" (click)="ssmModalOpen();" *ngIf="selectedSession.type !== eSessionType.azure" matTooltip="View SSM sessions"><i
+        <a class="icon-button" (click)="ssmModalOpen();" *ngIf="selectedSession.type !== eSessionType.azure && selectedSession.type !== eSessionType.awsCliLogin" matTooltip="View SSM sessions"><i
           class="moon-Server"></i></a>
         <a class="icon-button"
-           *ngIf="(selectedSession.type === eSessionType.awsIamUser || selectedSession.type === eSessionType.awsIamRoleFederated || selectedSession.type === eSessionType.awsIamRoleChained) && !isLeappTeamUser"
+           *ngIf="(selectedSession.type === eSessionType.awsIamUser || selectedSession.type === eSessionType.awsIamRoleFederated || selectedSession.type === eSessionType.awsIamRoleChained || selectedSession.type === eSessionType.awsCliLogin) && !isLeappTeamUser"
            (click)="editCurrentSession();" matTooltip="Edit Session"><i class="moon-Edit"></i></a>
       </div>
       <span class="separator"></span>

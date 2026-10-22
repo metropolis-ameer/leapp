@@ -23,6 +23,9 @@ import { AzureSessionService } from "@noovolari/leapp-core/services/session/azur
 import { OptionsService } from "../../../services/options.service";
 import { LocalstackSessionRequest } from "@noovolari/leapp-core/services/session/localstack/localstack-session-request";
 import { LocalstackSessionService } from "@noovolari/leapp-core/services/session/localstack/localstack-session-service";
+import { AwsCliLoginSessionRequest } from "@noovolari/leapp-core/services/session/aws/aws-cli-login-session-request";
+import { awsCliLoginValidationError } from "../aws-cli-login-validation";
+import { OperatingSystem } from "@noovolari/leapp-core/models/operating-system";
 
 @Component({
   selector: "app-create-dialog",
@@ -70,6 +73,12 @@ export class CreateDialogComponent implements OnInit {
   eSessionType = SessionType;
   eConstants = constants;
 
+  readonly accessStrategies: { value: SessionType; label: string }[] = [
+    { value: SessionType.awsIamRoleFederated, label: "AWS IAM Role Federated" },
+    { value: SessionType.awsIamUser, label: "AWS IAM User" },
+    { value: SessionType.awsIamRoleChained, label: "AWS IAM Role Chained" },
+  ];
+
   submitting = false;
 
   public form = new FormGroup({
@@ -78,6 +87,7 @@ export class CreateDialogComponent implements OnInit {
     subscriptionId: new FormControl("", [Validators.required]),
     tenantId: new FormControl("", [Validators.required]),
     name: new FormControl("", [Validators.required]),
+    sourceProfile: new FormControl("", [Validators.required, Validators.pattern(".*\\S.*")]),
     role: new FormControl("", [Validators.required]),
     roleArn: new FormControl("", [Validators.required]),
     roleSessionName: new FormControl("", [Validators.pattern("[a-zA-Z\\d\\-\\_\\@\\=\\,\\.]+")]),
@@ -88,7 +98,7 @@ export class CreateDialogComponent implements OnInit {
     accessKey: new FormControl("", [Validators.required]),
     awsRegion: new FormControl(""),
     mfaDevice: new FormControl(""),
-    awsProfile: new FormControl("", [Validators.required]),
+    awsProfile: new FormControl<{ value: string; label: string }>(null, [Validators.required]),
     azureLocation: new FormControl("", [Validators.required]),
     assumerSession: new FormControl("", [Validators.required]),
     selectAccessStrategy: new FormControl(SessionType.awsIamRoleFederated, [Validators.required]),
@@ -120,6 +130,9 @@ export class CreateDialogComponent implements OnInit {
     this.azureSessionService = leappCoreService.azureSessionService;
     this.localstackSessionService = leappCoreService.localstackSessionService;
     this.loggingService = leappCoreService.logService;
+    if (this.supportsCliLogin) {
+      this.accessStrategies.push({ value: SessionType.awsCliLogin, label: "AWS CLI Login" });
+    }
   }
 
   ngOnInit(): void {
@@ -198,6 +211,13 @@ export class CreateDialogComponent implements OnInit {
     if (this.submitting) {
       return;
     }
+    if (this.sessionType === SessionType.awsCliLogin) {
+      if (!this.formValid()) {
+        this.messageToasterService.toast(this.cliLoginValidationError, ToastLevel.warn);
+        return;
+      }
+      this.selectedProfile = this.form.controls.awsProfile.value;
+    }
     this.submitting = true;
     try {
       this.addProfileToWorkspace();
@@ -217,6 +237,8 @@ export class CreateDialogComponent implements OnInit {
   formValid(): boolean {
     let result = false;
     switch (this.sessionType) {
+      case SessionType.awsCliLogin:
+        return !this.cliLoginValidationError;
       case SessionType.awsIamRoleFederated:
         result =
           this.form.get("name").valid &&
@@ -261,6 +283,20 @@ export class CreateDialogComponent implements OnInit {
     return result;
   }
 
+  get cliLoginValidationError(): string {
+    return awsCliLoginValidationError(
+      this.form.value.name,
+      this.form.value.sourceProfile,
+      this.selectedRegion,
+      this.form.controls.awsProfile.value,
+      this.leappCoreService.sessionManagementService.getSessions()
+    );
+  }
+
+  get supportsCliLogin(): boolean {
+    return this.appService.detectOs() === OperatingSystem.mac;
+  }
+
   /**
    * First step of the wizard: set the Cloud provider or go to the SSO integration
    *
@@ -298,6 +334,8 @@ export class CreateDialogComponent implements OnInit {
       url = "https://docs.leapp.cloud/latest/configuring-session/configure-aws-iam-role-chained/";
     } else if (this.provider === SessionType.awsIamUser) {
       url = "https://docs.leapp.cloud/latest/configuring-session/configure-aws-iam-user/";
+    } else if (this.provider === SessionType.awsCliLogin) {
+      url = "https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sign-in.html";
     }
     this.windowService.openExternalUrl(url);
   }
@@ -362,6 +400,12 @@ export class CreateDialogComponent implements OnInit {
     this.selectedIdpUrl = $event.item;
   }
 
+  selectedProfileEvent($event: { items: { value: string; label: string }[]; item: { value: string; label: string } | null }): void {
+    this.profiles = $event.items;
+    this.selectedProfile = $event.item;
+    this.form.controls.awsProfile.setValue($event.item);
+  }
+
   setAzureProvider(): void {
     this.closeModal();
     openIntegrationEvent.next(true);
@@ -375,6 +419,15 @@ export class CreateDialogComponent implements OnInit {
   private async createSession(): Promise<void> {
     if (this.formValid()) {
       switch (this.sessionType) {
+        case SessionType.awsCliLogin:
+          const cliLoginRequest: AwsCliLoginSessionRequest = {
+            sessionName: this.form.value.name.trim(),
+            sourceProfile: this.form.value.sourceProfile.trim(),
+            region: this.selectedRegion,
+            profileId: this.selectedProfile.value,
+          };
+          await this.leappCoreService.awsCliLoginService.create(cliLoginRequest);
+          break;
         case SessionType.awsIamRoleFederated:
           const awsFederatedAccountRequest: AwsIamRoleFederatedSessionRequest = {
             sessionName: this.form.value.name.trim(),

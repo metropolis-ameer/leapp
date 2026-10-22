@@ -17,6 +17,7 @@ import { MessageToasterService } from "../../services/message-toaster.service";
 import { LoggedEntry, LogLevel, LogService } from "@noovolari/leapp-core/services/log-service";
 import { OperatingSystem } from "@noovolari/leapp-core/models/operating-system";
 import { constants } from "@noovolari/leapp-core/models/constants";
+import { DetailPipe } from "../sessions/pipes/detail.pipe";
 
 @Component({
   selector: "app-tray-menu",
@@ -215,6 +216,13 @@ export class TrayMenuComponent implements OnInit, OnDestroy {
     const profile = this.appProviderService.namedProfileService.getNamedProfiles().filter((p) => p.id === this.getProfileId(session))[0];
     const iconValue = profile && profile.name === "default" ? "home" : "user";
     switch (session.type) {
+      case SessionType.awsCliLogin:
+        icon =
+          session.status === SessionStatus.active
+            ? __dirname + `/assets/images/${iconValue}-online.png`
+            : __dirname + `/assets/images/${iconValue}-offline.png`;
+        label = `  ${session.sessionName} - AWS CLI Login - ${new DetailPipe().transform(session)}`;
+        break;
       case SessionType.awsIamUser:
         // eslint-disable-next-line max-len
         icon =
@@ -254,7 +262,7 @@ export class TrayMenuComponent implements OnInit, OnDestroy {
       icon,
       click: async () => {
         const factorizedSessionService = this.sessionServiceFactory.getSessionService(session.type);
-        if (session.status !== SessionStatus.active) {
+        if (session.status !== SessionStatus.active && !(session.type === SessionType.awsCliLogin && session.status === SessionStatus.pending)) {
           await factorizedSessionService.start(session.sessionId);
         } else {
           await factorizedSessionService.stop(session.sessionId);

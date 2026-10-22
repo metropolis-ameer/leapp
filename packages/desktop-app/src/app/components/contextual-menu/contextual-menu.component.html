@@ -22,7 +22,7 @@
       </button>
     </ng-container>
 
-    <ng-container *ngIf="selectedSession.type !== eSessionType.azure && selectedSession.type !== eSessionType.awsIamRoleChained">
+    <ng-container *ngIf="selectedSession.type !== eSessionType.azure && selectedSession.type !== eSessionType.awsIamRoleChained && selectedSession.type !== eSessionType.awsCliLogin">
       <div class="divider"></div>
       <button mat-menu-item (click)="createAChainedSessionFromSelectedOne();">
         <i class="moon-Add"></i>
@@ -37,7 +37,7 @@
       <span>&nbsp;&nbsp;Change</span>
     </button>
 
-    <ng-container *ngIf="selectedSession.type !== eSessionType.azure">
+    <ng-container *ngIf="selectedSession.type !== eSessionType.azure && selectedSession.type !== eSessionType.awsCliLogin">
       <button mat-menu-item (click)="ssmModalOpen();">
         <i class="moon-Server"></i>&nbsp;
         <span>View SSM Sessions</span>
@@ -45,7 +45,7 @@
     </ng-container>
 
     <ng-container
-      *ngIf="selectedSession.type === eSessionType.awsSsoRole || selectedSession.type === eSessionType.awsIamRoleFederated || selectedSession.type === eSessionType.awsIamRoleChained">
+      *ngIf="selectedSession.type === eSessionType.awsSsoRole || selectedSession.type === eSessionType.awsIamRoleFederated || selectedSession.type === eSessionType.awsIamRoleChained || selectedSession.type === eSessionType.awsCliLogin">
       <button [disabled]="this.optionsService.extensionEnabled && isWebConsoleFetching ? true : null" [class.disabled]="isWebConsoleFetching" mat-menu-item (click)="openAwsWebConsole();">
         <i class="moon-Open-Web-Console"></i>
         <span>&nbsp;&nbsp;Open Web Console</span>
@@ -107,7 +107,7 @@
       <span>Region</span>
     </button>
     <button mat-menu-item (click)="changeProfileModalOpen();"
-            *ngIf="(selectedSession.type === eSessionType.awsIamRoleFederated || selectedSession.type === eSessionType.awsIamRoleChained || selectedSession.type === eSessionType.awsSsoRole || selectedSession.type === eSessionType.awsIamUser)">
+            *ngIf="(selectedSession.type === eSessionType.awsIamRoleFederated || selectedSession.type === eSessionType.awsIamRoleChained || selectedSession.type === eSessionType.awsSsoRole || selectedSession.type === eSessionType.awsIamUser || selectedSession.type === eSessionType.awsCliLogin)">
       <i class="moon-User"></i>&nbsp;
       <span>Named Profile</span>
     </button>

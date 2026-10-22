@@ -2,6 +2,7 @@ import { Injectable, NgZone } from "@angular/core";
 import { AwsSamlAssertionExtractionService } from "@noovolari/leapp-core/services/aws-saml-assertion-extraction-service";
 import { RemoteProceduresServer } from "@noovolari/leapp-core/services/remote-procedures-server";
 import { AwsIamUserService } from "@noovolari/leapp-core/services/session/aws/aws-iam-user-service";
+import { AwsCliLoginService } from "@noovolari/leapp-core/services/session/aws/aws-cli-login-service";
 import { FileService } from "@noovolari/leapp-core/services/file-service";
 import { AwsCoreService } from "@noovolari/leapp-core/services/aws-core-service";
 import { LogService } from "@noovolari/leapp-core/services/log-service";
@@ -63,6 +64,7 @@ export class AppProviderService {
 
   private behaviouralSubjectServiceInstance: BehaviouralSubjectService;
   private awsIamUserServiceInstance: AwsIamUserService;
+  private awsCliLoginServiceInstance: AwsCliLoginService;
   private awsIamRoleFederatedServiceInstance: AwsIamRoleFederatedService;
   private awsIamRoleChainedServiceInstance: AwsIamRoleChainedService;
   private awsSsoRoleServiceInstance: AwsSsoRoleService;
@@ -191,6 +193,20 @@ export class AppProviderService {
       );
     }
     return this.awsIamUserServiceInstance;
+  }
+
+  public get awsCliLoginService(): AwsCliLoginService {
+    if (!this.awsCliLoginServiceInstance) {
+      this.awsCliLoginServiceInstance = new AwsCliLoginService(
+        this.behaviouralSubjectService,
+        this.repository,
+        this.appNativeService,
+        this.fileService,
+        this.awsCoreService,
+        this.logService
+      );
+    }
+    return this.awsCliLoginServiceInstance;
   }
 
   public get awsIamRoleFederatedService(): AwsIamRoleFederatedService {
@@ -338,7 +354,8 @@ export class AppProviderService {
         this.awsIamRoleChainedService,
         this.awsSsoRoleService,
         this.azureSessionService,
-        this.localstackSessionService
+        this.localstackSessionService,
+        this.awsCliLoginService
       );
     }
     return this.sessionFactoryInstance;

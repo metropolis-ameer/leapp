@@ -101,6 +101,7 @@ export class Repository {
 
   addSession(session: Session): void {
     const workspace = this.getWorkspace();
+    this.assertCliLoginDestination((session as any).profileId);
 
     workspace.sessions = [...workspace.sessions, session];
 
@@ -108,6 +109,7 @@ export class Repository {
   }
 
   updateSession(sessionId: string, session: Session): void {
+    this.assertCliLoginDestination((session as any).profileId);
     const sessions: Session[] = this.getSessions();
     for (let i = 0; i < sessions.length; i++) {
       if (sessions[i].sessionId === sessionId) {
@@ -149,7 +151,7 @@ export class Repository {
   }
 
   listAssumable(): Session[] {
-    return this.getSessionsOrDefault().filter((session) => session.type !== SessionType.azure);
+    return this.getSessionsOrDefault().filter((session) => session.type !== SessionType.azure && session.type !== SessionType.awsCliLogin);
   }
 
   listIamRoleChained(parentSession?: Session): Session[] {
@@ -263,6 +265,7 @@ export class Repository {
 
   updateProfile(profileId: string, newName: string): void {
     const workspace = this.getWorkspace();
+    this.assertCliLoginDestinationName(newName);
     const profileIndex = workspace.profiles.findIndex((p) => p.id === profileId);
     if (profileIndex > -1) {
       workspace.profiles[profileIndex].name = newName;
@@ -276,6 +279,22 @@ export class Repository {
     workspace.profiles.splice(profileIndex, 1);
 
     this.persistWorkspace(workspace);
+  }
+
+  assertCliLoginDestination(profileId?: string): void {
+    if (!profileId) {
+      return;
+    }
+    const sources = (this.getSessions() || []).filter((session) => session.type === SessionType.awsCliLogin);
+    if (sources.length) {
+      this.assertCliLoginDestinationName(this.getProfileName(profileId));
+    }
+  }
+
+  assertCliLoginDestinationName(name: string): void {
+    if ((this.getSessions() || []).some((session) => session.type === SessionType.awsCliLogin && (session as any).sourceProfile === name)) {
+      throw new Error("This destination profile is reserved as an AWS CLI Login source. Choose a different destination.");
+    }
   }
 
   // AWS SSO INTEGRATION

@@ -4,6 +4,10 @@
 
 There are no requirements for **macOS** and **Windows** users.
 
+AWS CLI Login sessions are an exception: on macOS, install AWS CLI **2.32.0 or
+later** and ensure Terminal and a browser are available. See
+[Configure AWS CLI Login](../configuring-session/configure-aws-cli-login.md).
+
 ## Linux systems
 Leapp uses `libsecret` and `gnome-keyring` as dependencies to store all sensitive data into the keyring.
 Depending on your distribution, you **may** need to install them using these commands before running Leapp.

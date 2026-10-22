@@ -8,6 +8,7 @@ import { AwsIamRoleFederatedSession } from "@noovolari/leapp-core/models/aws/aws
 import { AzureSession } from "@noovolari/leapp-core/models/azure/azure-session";
 import { AwsSsoRoleSession } from "@noovolari/leapp-core/models/aws/aws-sso-role-session";
 import { AwsIamRoleChainedSession } from "@noovolari/leapp-core/models/aws/aws-iam-role-chained-session";
+import { AwsCliLoginSession } from "@noovolari/leapp-core/models/aws/aws-cli-login-session";
 
 export default class ListSessions extends LeappCommand {
   static description = "Show sessions list with all properties; filter query is case sensitive";
@@ -49,6 +50,9 @@ export default class ListSessions extends LeappCommand {
       profileId: "profileId" in session ? namedProfilesMap.get((session as any).profileId)?.name : "-",
       region: session.region,
       status: SessionStatus[session.status],
+      sourceProfile: session.type === SessionType.awsCliLogin ? session.sourceProfile : "",
+      accountNumber: session.type === SessionType.awsCliLogin ? session.awsAccount?.accountId || "" : "",
+      principalArn: session.type === SessionType.awsCliLogin ? session.principalArn || "" : "",
     })) as any as Record<string, unknown>[];
 
     const columns = {
@@ -59,6 +63,9 @@ export default class ListSessions extends LeappCommand {
       profileId: { header: "Named Profile" },
       region: { header: "Region/Location" },
       status: { header: "Status" },
+      sourceProfile: { header: "Source Profile", extended: true },
+      accountNumber: { header: "Account Number", extended: true },
+      principalArn: { header: "Principal ARN", extended: true },
     };
 
     ux.table(data, columns, { ...flags });
@@ -72,6 +79,8 @@ export default class ListSessions extends LeappCommand {
         return (session as AzureSession).subscriptionId;
       case SessionType.awsIamUser:
         return ""; // (sessions as AwsIamUserSession).sessionName;
+      case SessionType.awsCliLogin:
+        return (session as AwsCliLoginSession).principalArn || "";
       case SessionType.awsSsoRole:
         const splittedRoleArn = (session as AwsSsoRoleSession).roleArn.split("/");
         splittedRoleArn.splice(0, 1);

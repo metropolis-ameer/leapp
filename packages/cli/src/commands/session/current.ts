@@ -8,6 +8,7 @@ import { Session } from "@noovolari/leapp-core/models/session";
 import { constants } from "@noovolari/leapp-core/models/constants";
 import { AzureSessionService } from "@noovolari/leapp-core/services/session/azure/azure-session-service";
 import { AzureSession } from "@noovolari/leapp-core/models/azure/azure-session";
+import { AwsCliLoginSession } from "@noovolari/leapp-core/models/aws/aws-cli-login-session";
 
 const awsProvider = "aws";
 const azureProvider = "azure";
@@ -36,7 +37,8 @@ export default class CurrentSession extends LeappCommand {
     }),
     format: Flags.string({
       char: "f",
-      description: "allows formatting data to show \n\t- aws -> id alias, accountNumber, roleArn\n\t- azure -> id tenantId, subscriptionId",
+      description:
+        "allows formatting data to show \n\t- aws -> id alias, accountNumber, roleArn (AWS CLI Login: sourceProfile, principalArn)\n\t- azure -> id tenantId, subscriptionId",
       default: undefined,
       required: false,
     }),
@@ -101,6 +103,16 @@ export default class CurrentSession extends LeappCommand {
 
   async getSessionData(session: Session): Promise<any> {
     const sessionService = this.cliProviderService.sessionFactory.getSessionService(session.type);
+    if (session.type === SessionType.awsCliLogin) {
+      const login = session as AwsCliLoginSession;
+      return {
+        id: login.sessionId,
+        alias: login.sessionName,
+        accountNumber: login.awsAccount?.accountId || "",
+        sourceProfile: login.sourceProfile,
+        principalArn: login.principalArn || "",
+      };
+    }
     if (sessionService instanceof AwsSessionService) {
       return {
         id: session.sessionId,
@@ -155,7 +167,13 @@ export default class CurrentSession extends LeappCommand {
 
   getProviderAssociatedSessionTypes(provider: string): SessionType[] {
     const providerSessions: any = {
-      [awsProvider]: [SessionType.awsIamUser, SessionType.awsIamRoleChained, SessionType.awsIamRoleFederated, SessionType.awsSsoRole],
+      [awsProvider]: [
+        SessionType.awsIamUser,
+        SessionType.awsIamRoleChained,
+        SessionType.awsIamRoleFederated,
+        SessionType.awsSsoRole,
+        SessionType.awsCliLogin,
+      ],
       [azureProvider]: [SessionType.azure],
     };
 

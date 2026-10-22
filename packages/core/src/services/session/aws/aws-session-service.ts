@@ -13,6 +13,8 @@ import { AwsCoreService } from "../../aws-core-service";
 import { FileService } from "../../file-service";
 
 export abstract class AwsSessionService extends SessionService {
+  protected resolveService: (type: SessionType) => SessionService;
+
   /* This service manage the session manipulation as we need top generate credentials and maintain them for a specific duration */
   protected constructor(
     protected sessionNotifier: IBehaviouralNotifier,
@@ -23,12 +25,27 @@ export abstract class AwsSessionService extends SessionService {
     super(sessionNotifier, repository);
   }
 
+  setSessionServiceResolver(resolver: (type: SessionType) => SessionService): void {
+    this.resolveService = resolver;
+  }
+
   getDependantSessions(sessionId: string): Session[] {
     return this.repository.listIamRoleChained(this.repository.getSessionById(sessionId));
   }
 
   async start(sessionId: string): Promise<void> {
     try {
+      if (
+        this.repository
+          .getSessions?.()
+          .some(
+            (session) =>
+              session.type === SessionType.awsCliLogin &&
+              (session as any).sourceProfile === this.repository.getProfileName((this.repository.getSessionById(sessionId) as any).profileId)
+          )
+      ) {
+        throw new Error("This destination profile is reserved as an AWS CLI Login source. Choose a different destination.");
+      }
       if (this.isThereAnotherPendingSessionWithSameNamedProfile(sessionId)) {
         throw new LeappBaseError("Pending session with same named profile", this, LogLevel.info, "Pending session with same named profile");
       }
@@ -163,7 +180,7 @@ export abstract class AwsSessionService extends SessionService {
     for (let i = 0; i < activeSessions.length; i++) {
       const sess = activeSessions[i];
       if ((sess as any).profileId === profileId) {
-        await this.stop(sess.sessionId);
+        await (this.resolveService ? this.resolveService(sess.type) : this).stop(sess.sessionId);
       }
     }
   }

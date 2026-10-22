@@ -6,6 +6,7 @@ import { AwsSessionService } from "@noovolari/leapp-core/services/session/aws/aw
 import { BehaviorSubject } from "rxjs";
 import { MessageToasterService, ToastLevel } from "./message-toaster.service";
 import { WindowService } from "./window.service";
+import { SessionType } from "@noovolari/leapp-core/models/session-type";
 
 export enum FetchingState {
   notFetching,
@@ -80,6 +81,14 @@ export class ExtensionWebsocketService {
   }
 
   async openWebConsoleWithExtension(session: Session): Promise<void> {
+    if (session.type === SessionType.awsCliLogin) {
+      try {
+        this.appProviderService.awsCliLoginService.assertConsoleSupported(session);
+      } catch (error) {
+        this.toastService.toast(error.message, ToastLevel.error);
+      }
+      return;
+    }
     this.fetching$.next(FetchingState.fetchingRequested);
     this.appProviderService.behaviouralSubjectService.unselectSessions();
     const sessionService = this.appProviderService.sessionFactory.getSessionService(session.type) as AwsSessionService;

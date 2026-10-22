@@ -15,6 +15,7 @@ export class AppNativeService implements INativeService {
   app: any;
   dialog: any;
   exec: any;
+  execFile: typeof import("child_process").execFile;
   session: any;
   unzip: any;
   copydir: any;
@@ -54,6 +55,7 @@ export class AppNativeService implements INativeService {
       this.ini = window.require("js-ini");
       this.path = window.require("path");
       this.exec = window.require("child_process").exec;
+      this.execFile = window.require("child_process").execFile;
       this.url = window.require("url");
       this.unzip = window.require("extract-zip");
       this.copydir = window.require("copy-dir");

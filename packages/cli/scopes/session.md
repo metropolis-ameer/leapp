@@ -26,7 +26,7 @@ USAGE
   $ leapp session add [--providerType aws] [--accessKey <value>] [--idpArn <value>] [--idpUrl <value>]
     [--mfaDevice <value>] [--sessionName <value>] [--parentSessionId <value>] [--profileId <value>] [--region <value>]
     [--roleArn <value>] [--roleSessionName <value>] [--secretKey <value>] [--sessionType
-    awsIamRoleFederated|awsIamUser|awsIamRoleChained]
+    awsIamRoleFederated|awsIamUser|awsIamRoleChained|awsCliLogin] [--sourceProfile <value>]
 
 FLAGS
   --accessKey=<value>        AWS Access Key ID of the IAM User
@@ -43,9 +43,10 @@ FLAGS
   --roleSessionName=<value>  Optional Alias for the Assumed Role Session name
   --secretKey=<value>        AWS Secret Access Key of the IAM User
   --sessionName=<value>      Session Alias to identify the session in Leapp
+  --sourceProfile=<value>    AWS CLI login source profile name (not the Leapp destination profile ID)
   --sessionType=<option>     Identify the AWS session type. Valid types are [awsIamRoleFederated, awsIamUser,
-                             awsIamRoleChained]
-                             <options: awsIamRoleFederated|awsIamUser|awsIamRoleChained>
+                             awsIamRoleChained, awsCliLogin]
+                             <options: awsIamRoleFederated|awsIamUser|awsIamRoleChained|awsCliLogin>
 
 DESCRIPTION
   Add a new session
@@ -53,14 +54,24 @@ DESCRIPTION
 EXAMPLES
   $leapp session add
 
-  $leapp session add --providerType [aws] --sessionType [awsIamRoleFederated, awsIamRoleChained, awsIamUser] --region [AWSREGION] --sessionName NAME ...[combination of flags relative to the session]
+  $leapp session add --providerType [aws] --sessionType [awsIamRoleFederated, awsIamRoleChained, awsIamUser, awsCliLogin] --region [AWSREGION] --sessionName NAME ...[combination of flags relative to the session]
 
   $leapp session add --providerType aws --sessionType awsIamRoleFederated --sessionName NAME --region AWSREGION --idpArn IDPARN --idpUrl IDPURL --profileId PROFILEID --roleArn ROLEARN
 
   $leapp session add --providerType aws --sessionType awsIamRoleChained --sessionName NAME --region AWSREGION --profileId PROFILEID --roleArn ROLEARN --parentSessionId ID (--roleSessionName ROLESESSIONNAME)
 
   $leapp session add --providerType aws --sessionType awsIamUser --sessionName NAME --region AWSREGION --profileId PROFILEID --accessKey ACCESSKEY --secretKey SECRETKEY (--mfaDevice MFADEVICEARN)
+
+  $leapp session add --providerType aws --sessionType awsCliLogin --sessionName NAME --region AWSREGION --sourceProfile SOURCEPROFILE --profileId DESTINATIONPROFILEID
 ```
+
+AWS CLI Login requires AWS CLI 2.32.0+ on macOS. `--sourceProfile` is the AWS CLI
+login profile name; `--profileId` is a separate Leapp destination ID (defaults to
+Leapp's default profile). An interactive add prompts for both. Blank source
+names and IAM user, federation, or chaining flags are rejected for this type.
+Each source can be assigned once and cannot be the destination profile.
+See [AWS CLI Login sessions](../README.md#aws-cli-login-sessions) for lifecycle
+and logout limitations.
 
 _See code: [src/commands/session/add.ts](https://github.com/noovolari/leapp/blob/v0.1.65/src/commands/session/add.ts)_
 
@@ -121,6 +132,7 @@ USAGE
 FLAGS
   -f, --format=<value>     allows formatting data to show
                            - aws -> id alias, accountNumber, roleArn
+                             (AWS CLI Login: sourceProfile, principalArn instead of roleArn)
                            - azure -> id tenantId, subscriptionId
   -i, --inline
   -p, --profile=<value>    [default: default] aws named profile of which gets info
@@ -240,6 +252,9 @@ EXAMPLES
 
 _See code: [src/commands/session/list.ts](https://github.com/noovolari/leapp/blob/v0.1.65/src/commands/session/list.ts)_
 
+For AWS CLI Login, `-x` also shows Source Profile, Account Number, and Principal
+ARN after the identity has been resolved by Start.
+
 ## `leapp session open-web-console`
 
 Open an AWS Web Console
@@ -262,6 +277,10 @@ EXAMPLES
 ```
 
 _See code: [src/commands/session/open-web-console.ts](https://github.com/noovolari/leapp/blob/v0.1.65/src/commands/session/open-web-console.ts)_
+
+AWS CLI Login reports a clear console-unavailable error, including with
+`--print`. IAM-user identities are unsupported and federated-role console
+access remains unverified; no generic sign-in URL is substituted.
 
 ## `leapp session run-aws-credential-plugin`
 
@@ -320,6 +339,10 @@ EXAMPLES
 
 _See code: [src/commands/session/start.ts](https://github.com/noovolari/leapp/blob/v0.1.65/src/commands/session/start.ts)_
 
+AWS CLI Login reuses valid credentials or opens Terminal and the browser for
+`aws login --profile SOURCE`. Keep Leapp Desktop running to own refresh and any
+required reauthentication. Ctrl-C cancels the login and performs Stop cleanup.
+
 ## `leapp session start-ssm-session`
 
 Start an AWS SSM session
@@ -343,6 +366,8 @@ EXAMPLES
 ```
 
 _See code: [src/commands/session/start-ssm-session.ts](https://github.com/noovolari/leapp/blob/v0.1.65/src/commands/session/start-ssm-session.ts)_
+
+AWS CLI Login sessions are excluded from SSM and cannot be role-chain parents.
 
 ## `leapp session stop [SESSIONNAME]`
 

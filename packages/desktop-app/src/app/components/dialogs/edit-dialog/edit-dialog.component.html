@@ -20,9 +20,15 @@
   <!-- ==                      PROFILE ID SELECTION                    == -->
   <!-- ================================================================== -->
   <ng-container *ngIf="accountType.toString().indexOf('aws') > -1">
+    <div class="form-field" *ngIf="accountType === eSessionType.awsCliLogin">
+      <label>Source AWS login profile</label>
+      <input spellcheck="false" formControlName="sourceProfile" type="text" class="form-control" placeholder="Existing or new source profile *">
+      <small class="text-error" *ngIf="cliLoginValidationError">{{cliLoginValidationError}}</small>
+      <p class="smaller">Use a separate destination profile. Start opens Terminal and your browser if login is needed. Stop logs out the source and can affect other tools sharing it; issued credentials and browser sessions may remain valid. Web console access is unavailable for unsupported identities. Role chaining and SSM are not supported.</p>
+    </div>
     <div class="form-group">
       <div class="form-field">
-        <label>Named profile</label>
+        <label>{{accountType === eSessionType.awsCliLogin ? 'Destination named profile' : 'Named profile'}}</label>
         <app-leapp-select #namedProfileSelect
                           [controlName]="'awsProfile'"
                           [form]="form"
@@ -160,7 +166,7 @@
   -->
   <div class="form-group">
     <div class="form-field text-right">
-      <a (click)="tryProperties();" class="check-validity btn-link" *ngIf="accountType">Test credential generation</a>
+      <a (click)="tryProperties();" class="check-validity btn-link" *ngIf="accountType && accountType !== eSessionType.awsCliLogin">Test credential generation</a>
     </div>
   </div>
   <br>

@@ -73,6 +73,9 @@ describe("ListSessions", () => {
         role: (command as any).getRole(sessions[0]),
         status: "inactive",
         type: "sessionTypeLabel",
+        sourceProfile: "",
+        accountNumber: "",
+        principalArn: "",
       },
     ]);
     expect(tableSpy.mock.calls[0][1]).toEqual({
@@ -83,6 +86,9 @@ describe("ListSessions", () => {
       region: { header: "Region/Location" },
       role: { header: "Role", extended: true },
       status: { header: "Status" },
+      sourceProfile: { header: "Source Profile", extended: true },
+      accountNumber: { header: "Account Number", extended: true },
+      principalArn: { header: "Principal ARN", extended: true },
     });
   });
 });

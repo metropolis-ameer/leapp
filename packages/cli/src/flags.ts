@@ -78,6 +78,11 @@ export const region = Flags.string({
   hidden: false,
 });
 
+export const sourceProfile = Flags.string({
+  description: "AWS CLI login source profile name (not the Leapp destination profile ID)",
+  hidden: false,
+});
+
 export const providerType = Flags.string({
   description: "Identify the provider for your sessions. Valid types are [aws]",
   hidden: false,
@@ -85,12 +90,13 @@ export const providerType = Flags.string({
 });
 
 export const sessionType = Flags.string({
-  description: "Identify the AWS session type. Valid types are [awsIamRoleFederated, awsIamUser, awsIamRoleChained]",
+  description: "Identify the AWS session type. Valid types are [awsIamRoleFederated, awsIamUser, awsIamRoleChained, awsCliLogin]",
   hidden: false,
   options: [
     SessionType.awsIamRoleFederated.toString(),
     SessionType.awsIamUser.toString(),
     SessionType.awsIamRoleChained.toString(),
+    SessionType.awsCliLogin.toString(),
     /*SessionType.azure.toString(),*/
   ],
 });

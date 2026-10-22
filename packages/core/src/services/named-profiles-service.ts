@@ -62,6 +62,7 @@ export class NamedProfilesService {
   }
 
   async editNamedProfile(id: string, newName: string): Promise<void> {
+    this.repository.assertCliLoginDestinationName?.(newName.trim());
     const activeSessions = this.getSessionsWithNamedProfile(id).filter((session) => session.status === SessionStatus.active);
 
     for (const session of activeSessions) {
@@ -76,6 +77,7 @@ export class NamedProfilesService {
   async deleteNamedProfile(id: string): Promise<void> {
     const sessions = this.getSessionsWithNamedProfile(id);
     const defaultNamedProfileId = this.repository.getDefaultProfileId();
+    this.repository.assertCliLoginDestination?.(defaultNamedProfileId);
 
     for (const session of sessions) {
       const sessionService = this.sessionFactory.getSessionService(session.type);
@@ -96,6 +98,7 @@ export class NamedProfilesService {
   }
 
   async changeNamedProfile(session: Session, newNamedProfileId: string): Promise<void> {
+    this.repository.assertCliLoginDestination?.(newNamedProfileId);
     const sessionService = this.sessionFactory.getSessionService(session.type);
     if (sessionService instanceof AwsSessionService) {
       const wasActive = session.status === SessionStatus.active;

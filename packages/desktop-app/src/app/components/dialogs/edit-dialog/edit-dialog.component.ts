@@ -21,6 +21,9 @@ import { AppMfaCodePromptService } from "../../../services/app-mfa-code-prompt.s
 import { SessionStatus } from "@noovolari/leapp-core/models/session-status";
 import { OptionsService } from "../../../services/options.service";
 import { IKeychainService } from "@noovolari/leapp-core/interfaces/i-keychain-service";
+import { AwsCliLoginSession } from "@noovolari/leapp-core/models/aws/aws-cli-login-session";
+import { AwsCliLoginSessionRequest } from "@noovolari/leapp-core/services/session/aws/aws-cli-login-session-request";
+import { awsCliLoginValidationError } from "../aws-cli-login-validation";
 
 @Component({
   selector: "app-edit-dialog",
@@ -58,6 +61,7 @@ export class EditDialogComponent implements OnInit, AfterViewInit {
     subscriptionId: new FormControl("", [Validators.required]),
     tenantId: new FormControl("", [Validators.required]),
     name: new FormControl("", [Validators.required]),
+    sourceProfile: new FormControl("", [Validators.required, Validators.pattern(".*\\S.*")]),
     role: new FormControl("", [Validators.required]),
     roleArn: new FormControl("", [Validators.required]),
     roleSessionName: new FormControl("", [Validators.pattern("[a-zA-Z\\d\\-\\_\\@\\=\\,\\.]+")]),
@@ -148,6 +152,16 @@ export class EditDialogComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
+    if (this.accountType === SessionType.awsCliLogin) {
+      const session = this.selectedSession as AwsCliLoginSession;
+      this.form.controls["name"].setValue(session.sessionName);
+      this.form.controls["sourceProfile"].setValue(session.sourceProfile);
+      this.namedProfileSelect.selectValue({
+        value: session.profileId,
+        label: this.leappCoreService.namedProfileService.getProfileName(session.profileId),
+      });
+    }
+
     if (this.accountType === SessionType.awsIamRoleFederated) {
       this.form.controls["name"].setValue(this.selectedSession.sessionName);
       this.form.controls["roleArn"].setValue((this.selectedSession as AwsIamRoleFederatedSession).roleArn);
@@ -221,6 +235,13 @@ export class EditDialogComponent implements OnInit, AfterViewInit {
    * Save the edited account in the workspace
    */
   async saveAccount(): Promise<void> {
+    if (this.submitting) {
+      return;
+    }
+    if (this.accountType === SessionType.awsCliLogin) {
+      await this.saveCliLoginSession();
+      return;
+    }
     this.submitting = true;
     try {
       if (this.formValid()) {
@@ -352,6 +373,8 @@ export class EditDialogComponent implements OnInit, AfterViewInit {
   formValid(): boolean {
     let result = false;
     switch (this.accountType) {
+      case SessionType.awsCliLogin:
+        return !this.cliLoginValidationError;
       case SessionType.awsIamRoleFederated:
         result =
           this.form.get("name").valid &&
@@ -393,6 +416,17 @@ export class EditDialogComponent implements OnInit, AfterViewInit {
     return result;
   }
 
+  get cliLoginValidationError(): string {
+    return awsCliLoginValidationError(
+      this.form.value.name,
+      this.form.value.sourceProfile,
+      this.selectedRegion,
+      this.selectedProfile,
+      this.leappCoreService.sessionManagementService.getSessions(),
+      this.selectedSessionId
+    );
+  }
+
   goBack(): void {
     this.appService.closeModal();
   }
@@ -417,6 +451,36 @@ export class EditDialogComponent implements OnInit, AfterViewInit {
 
   closeModal(): void {
     this.appService.closeModal();
+  }
+
+  private async saveCliLoginSession(): Promise<void> {
+    if (!this.formValid()) {
+      this.messageToasterService.toast(this.cliLoginValidationError, ToastLevel.warn);
+      return;
+    }
+    this.submitting = true;
+    try {
+      this.addProfileToWorkspace();
+      const request: AwsCliLoginSessionRequest = {
+        sessionName: this.form.value.name.trim(),
+        sourceProfile: this.form.value.sourceProfile.trim(),
+        region: this.selectedRegion,
+        profileId: this.selectedProfile.value,
+      };
+      await this.leappCoreService.awsCliLoginService.update(this.selectedSession.sessionId, request);
+      try {
+        await this.leappCoreService.teamService.pushToRemote();
+      } catch (error) {
+        this.leappCoreService.teamService.setSyncState("failed");
+        throw error;
+      }
+      this.messageToasterService.toast(`Session: ${request.sessionName}, edited.`, ToastLevel.success, "");
+      this.closeModal();
+    } catch (error) {
+      this.messageToasterService.toast(error.message, ToastLevel.error);
+    } finally {
+      this.submitting = false;
+    }
   }
 
   /**

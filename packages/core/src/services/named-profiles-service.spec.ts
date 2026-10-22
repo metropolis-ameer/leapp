@@ -7,6 +7,22 @@ import { AwsSessionService } from "./session/aws/aws-session-service";
 import { LoggedException, LogLevel } from "./log-service";
 
 describe("NamedProfilesService", () => {
+  test("rejects switching output onto an AWS CLI Login source before stopping or mutating a session", async () => {
+    const stop = jest.fn();
+    const repository: any = {
+      assertCliLoginDestination: () => {
+        throw new Error("reserved source");
+      },
+      updateSession: jest.fn(),
+    };
+    const service = new NamedProfilesService({ getSessionService: () => ({ stop }) } as any, repository, null);
+    const session: any = { sessionId: "id", profileId: "old", status: SessionStatus.active };
+    await expect(service.changeNamedProfile(session, "source")).rejects.toThrow("reserved source");
+    expect(session.profileId).toBe("old");
+    expect(stop).not.toHaveBeenCalled();
+    expect(repository.updateSession).not.toHaveBeenCalled();
+  });
+
   test("getNamedProfiles", () => {
     const repository = {
       getProfiles: () => [{ id: "profile1" }, { id: "defaultId" }],

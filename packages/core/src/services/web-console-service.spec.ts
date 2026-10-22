@@ -4,6 +4,19 @@ import { CredentialsInfo } from "../models/credentials-info";
 import { LoggedEntry, LogLevel } from "./log-service";
 
 describe("WebConsoleService", () => {
+  test("all console consumers reject explicitly unsupported credentials before federation or browser access", async () => {
+    const shell = { openExternalUrl: jest.fn() };
+    const native = { fetch: jest.fn() };
+    const log = { log: jest.fn() };
+    const service = new WebConsoleService(shell, log as any, native as any);
+    const credentials = { sessionToken: {}, consoleUnsupportedReason: "AWS console unavailable: IAM-user AWS CLI Login credentials." };
+    await expect(service.getWebConsoleUrl(credentials, "us-east-1")).rejects.toThrow("console unavailable");
+    await expect(service.openWebConsole(credentials, "us-east-1")).rejects.toThrow("console unavailable");
+    expect(native.fetch).not.toHaveBeenCalled();
+    expect(shell.openExternalUrl).not.toHaveBeenCalled();
+    expect(log.log).not.toHaveBeenCalled();
+  });
+
   const getService = () => {
     const shellService: any = {
       openExternalUrl: jest.fn((_loginUrl: string): void => {}),

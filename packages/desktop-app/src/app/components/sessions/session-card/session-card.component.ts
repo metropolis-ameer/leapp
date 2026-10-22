@@ -62,7 +62,10 @@ export class SessionCardComponent implements OnInit {
    * Used to call for start or stop depending on sessions status
    */
   switchCredentials(): void {
-    if (this.session.status === SessionStatus.active) {
+    if (
+      this.session.status === SessionStatus.active ||
+      (this.session.type === SessionType.awsCliLogin && this.session.status === SessionStatus.pending)
+    ) {
       this.stopSession();
     } else {
       this.startSession();
@@ -72,7 +75,7 @@ export class SessionCardComponent implements OnInit {
   async openOptionBar(event: any, session: Session): Promise<void> {
     this.behaviouralSubjectService.selectSession(session.sessionId);
     if (event.metaKey || event.ctrlKey) {
-      if (this.optionService.extensionEnabled) {
+      if (this.optionService.extensionEnabled && session.type !== SessionType.awsCliLogin) {
         await this.extensionWebSocketService.openWebConsoleWithExtension(session);
       } else {
         await this.selectedSessionActionService.openAwsWebConsole(session);
@@ -104,6 +107,8 @@ export class SessionCardComponent implements OnInit {
         return "blue";
       case SessionType.awsIamUser:
         return "orange";
+      case SessionType.awsCliLogin:
+        return "orange";
       case SessionType.awsSsoRole:
         return "red";
       case SessionType.awsIamRoleFederated:
@@ -123,6 +128,8 @@ export class SessionCardComponent implements OnInit {
         return "LocalStack";
       case SessionType.awsIamUser:
         return "IAM User";
+      case SessionType.awsCliLogin:
+        return "AWS CLI Login";
       case SessionType.awsSsoRole:
         return "AWS Single Sign-On";
       case SessionType.awsIamRoleFederated:

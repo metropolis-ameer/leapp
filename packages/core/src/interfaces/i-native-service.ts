@@ -8,6 +8,7 @@ export interface INativeService {
   os: any;
   ini: any;
   exec: any;
+  execFile?: typeof import("child_process").execFile;
   unzip: any;
   copydir: any;
   sudo: any;

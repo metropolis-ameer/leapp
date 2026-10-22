@@ -37,7 +37,7 @@
                        [bindValue]="'value'"
                        (change)="setAccessStrategy(provider);"
                        [clearable]="false"
-                       [items]="[{value: eSessionType.awsIamRoleFederated, label: 'AWS IAM Role Federated'}, {value: eSessionType.awsIamUser, label: 'AWS IAM User'}, {value: eSessionType.awsIamRoleChained, label: 'AWS IAM Role Chained'}]"
+                       [items]="accessStrategies"
                        placeholder="Select Session Strategy"
                        [addTag]="false"
             ></ng-select>
@@ -54,7 +54,7 @@
       <ng-container *ngIf="sessionType.toString().indexOf('aws') > -1">
         <div class="form-group">
           <div class="form-field">
-            <label>Named profile</label>
+            <label>{{sessionType === eSessionType.awsCliLogin ? 'Destination profile' : 'Named profile'}}</label>
             <app-leapp-select [controlName]="'awsProfile'"
                               [form]="form"
                               [placeholder]="'add a new named profile'"
@@ -65,8 +65,8 @@
                               [bindLabel]="'label'"
                               [bindValue]="'value'"
                               [uppercased]="false"
-                              (selected)="profiles = $event.items; selectedProfile = $event.item;"></app-leapp-select>
-            <small class="text-error" *ngIf="(form.controls['awsProfile'].dirty || form.controls['awsProfile'].touched) && form.get('awsProfile')?.value === undefined">Insert the Named Profile</small>
+                              (selected)="selectedProfileEvent($event);"></app-leapp-select>
+            <small class="text-error" *ngIf="(form.controls['awsProfile'].dirty || form.controls['awsProfile'].touched) && !form.get('awsProfile')?.value">Insert the Named Profile</small>
           </div>
         </div>
       </ng-container>
@@ -84,6 +84,12 @@
       <!-- aws SESSION PROPERTIES -->
       <!-- ====================== -->
       <ng-container *ngIf="sessionType.toString().indexOf('aws') > -1">
+        <div class="form-field" *ngIf="sessionType === eSessionType.awsCliLogin">
+          <label>Source AWS login profile</label>
+          <input spellcheck="false" formControlName="sourceProfile" type="text" class="form-control" placeholder="Existing or new source profile *">
+          <small>AWS CLI 2.32.0+ required. Stop logs out other tools using this source. Web console, role chaining and SSM are unavailable.</small>
+          <small class="text-error" *ngIf="cliLoginValidationError">{{cliLoginValidationError}}</small>
+        </div>
         <!-- ================================================================== -->
         <!-- ==                        aws REGION ALL                        == -->
         <!-- ================================================================== -->

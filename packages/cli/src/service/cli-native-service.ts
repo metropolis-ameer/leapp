@@ -8,6 +8,7 @@ export class CliNativeService implements INativeService {
   os: any;
   ini: any;
   exec: any;
+  execFile: typeof import("child_process").execFile;
   unzip: any;
   copydir: any;
   sudo: any;
@@ -35,6 +36,7 @@ export class CliNativeService implements INativeService {
     this.ini = require("js-ini");
     this.path = require("path");
     this.exec = require("child_process").exec;
+    this.execFile = require("child_process").execFile;
     this.process = global.process;
     this.nodeIpc = require("node-ipc");
     this.url = require("url");
