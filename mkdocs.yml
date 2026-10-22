@@ -31,6 +31,7 @@ nav:
   - 'Configuration':
       - 'Add your first configuration': 'configuration.md'
       - 'Configuring a Session':
+          - 'Configure AWS CLI Login': 'configuring-session/configure-aws-cli-login.md'
           - 'Configure AWS IAM User': 'configuring-session/configure-aws-iam-user.md'
           - 'Configure AWS IAM Role Federated': 'configuring-session/configure-aws-iam-role-federated.md'
           - 'Configure AWS IAM Role Chained': 'configuring-session/configure-aws-iam-role-chained.md'

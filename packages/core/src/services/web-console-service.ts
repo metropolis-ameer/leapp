@@ -14,6 +14,9 @@ export class WebConsoleService {
     sessionRegion: string,
     sessionDuration: number = this.sessionDurationInHours * this.secondsInAHour
   ): Promise<string> {
+    if (credentialsInfo.consoleUnsupportedReason) {
+      throw new Error(credentialsInfo.consoleUnsupportedReason);
+    }
     const isUSGovCloud = sessionRegion.startsWith("us-gov-");
 
     let consoleHomeUrl;

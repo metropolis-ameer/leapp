@@ -84,7 +84,10 @@ describe("CloudProviderService", () => {
     ];
 
     const accessMethods = service.creatableAccessMethods(CloudProviderType.aws);
-    expect(accessMethods).toEqual([
+    const login = accessMethods.find((method) => method.sessionType === SessionType.awsCliLogin);
+    expect(login.label).toBe("AWS CLI Login");
+    expect(login.accessMethodFields.map((field) => field.creationRequestField)).toEqual(["sessionName", "sourceProfile", "region", "profileId"]);
+    expect(accessMethods.filter((method) => method.sessionType !== SessionType.awsCliLogin)).toEqual([
       {
         accessMethodFields: [
           {

@@ -120,6 +120,10 @@ export class ContextualMenuComponent implements OnInit, OnDestroy {
   }
 
   async openAwsWebConsole(): Promise<void> {
+    if (this.selectedSession.type === SessionType.awsCliLogin) {
+      await this.selectedSessionActionsService.openAwsWebConsole(this.selectedSession);
+      return;
+    }
     if (this.optionsService.extensionEnabled) {
       await this.extensionWebsocketService.openWebConsoleWithExtension(this.selectedSession);
     } else {

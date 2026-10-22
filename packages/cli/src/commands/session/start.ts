@@ -8,6 +8,7 @@ import { AwsIamRoleFederatedSession } from "@noovolari/leapp-core/models/aws/aws
 import { AwsIamRoleChainedSession } from "@noovolari/leapp-core/models/aws/aws-iam-role-chained-session";
 import { AwsSsoRoleSession } from "@noovolari/leapp-core/models/aws/aws-sso-role-session";
 import { AzureSession } from "@noovolari/leapp-core/models/azure/azure-session";
+import { AwsCliLoginSession } from "@noovolari/leapp-core/models/aws/aws-cli-login-session";
 import { Args } from "@oclif/core";
 
 export default class StartSession extends LeappCommand {
@@ -71,14 +72,32 @@ export default class StartSession extends LeappCommand {
       throw new Error("session already started");
     }
     const sessionService = this.cliProviderService.sessionFactory.getSessionService(session.type);
-    process.on("SIGINT", () => {
-      sessionService.sessionDeactivated(session.sessionId);
-      process.exit(0);
-    });
+    let cancellation: Promise<void> | undefined;
+    const interrupt = () => {
+      if (session.type === SessionType.awsCliLogin) {
+        cancellation = (async () => {
+          try {
+            await sessionService.stop(session.sessionId);
+            await this.cliProviderService.remoteProceduresClient.refreshSessions();
+          } catch (error) {
+            this.warn(error instanceof Error ? error.message : "AWS CLI Login cancellation failed");
+          }
+          process.exit(130);
+        })();
+      } else {
+        sessionService.sessionDeactivated(session.sessionId);
+        process.exit(0);
+      }
+    };
+    process.once("SIGINT", interrupt);
     try {
       await sessionService.start(session.sessionId);
-      this.log(`session ${session.sessionName} started`);
+      if (!cancellation) {
+        this.log(`session ${session.sessionName} started`);
+      }
     } finally {
+      await cancellation;
+      process.removeListener("SIGINT", interrupt);
       await this.cliProviderService.remoteProceduresClient.refreshSessions();
     }
   }
@@ -113,6 +132,9 @@ export default class StartSession extends LeappCommand {
         return (session as AwsIamRoleChainedSession).roleArn.split("role/")[1] || "";
       case SessionType.awsIamUser:
         return "";
+      case SessionType.awsCliLogin:
+        const login = session as AwsCliLoginSession;
+        return [login.sourceProfile, login.awsAccount?.accountId, login.principalArn].filter(Boolean).join(" - ");
       case SessionType.awsSsoRole:
         const splittedRoleArn = (session as AwsSsoRoleSession).roleArn.split("/");
         splittedRoleArn.splice(0, 1);

@@ -31,3 +31,9 @@ Leapp will open your default browser with the Region and the Role already prepar
 ![](../../images/built-in-features/opening-screen.png?style=smaller-img)
 
 > **note:** the feature currently is available for IAM Role Federated Sessions, Single Sign-On Sessions, and IAM Role Chained Sessions.
+
+AWS CLI Login sessions do not currently support authenticated console access.
+IAM-user login credentials were rejected by the console during feasibility
+testing; federated-role login credentials remain unverified. Console actions
+report this limitation explicitly. See
+[Configure AWS CLI Login](../configuring-session/configure-aws-cli-login.md).

@@ -80,6 +80,14 @@ export class SelectedSessionActionsService {
 
   async openAwsWebConsole(session: Session): Promise<void> {
     this.behaviouralSubjectService.unselectSessions();
+    if (session.type === SessionType.awsCliLogin) {
+      try {
+        this.appProviderService.awsCliLoginService.assertConsoleSupported(session);
+      } catch (error) {
+        this.messageToasterService.toast(error.message, ToastLevel.error);
+      }
+      return;
+    }
     const credentials = await (this.getSelectedSessionService(session) as AwsSessionService).generateCredentials(session.sessionId);
     const sessionRegion = session.region;
     const sessionDuration = this.appProviderService.workspaceService.getWorkspace().samlRoleSessionDuration;
@@ -105,6 +113,10 @@ export class SelectedSessionActionsService {
   }
 
   async ssmModalOpen(session: Session): Promise<void> {
+    if (session.type === SessionType.awsCliLogin) {
+      this.messageToasterService.toast("SSM is not supported for AWS CLI Login sessions.", ToastLevel.warn);
+      return;
+    }
     this.behaviouralSubjectService.unselectSessions();
     this.modalService.show(SsmModalDialogComponent, {
       animated: false,
@@ -179,6 +191,10 @@ export class SelectedSessionActionsService {
   }
 
   createAChainedSessionFromSelectedOne(session: Session): void {
+    if (session.type === SessionType.awsCliLogin) {
+      this.messageToasterService.toast("Role chaining is not supported for AWS CLI Login sessions.", ToastLevel.warn);
+      return;
+    }
     this.behaviouralSubjectService.unselectSessions();
     const aliasConstructed = `ChainedFrom${session.sessionName}`;
     const regionConstructed = session.region;
@@ -238,6 +254,9 @@ export class SelectedSessionActionsService {
     this.appProviderService.behaviouralSubjectService.unselectSessions();
 
     try {
+      if (session.type === SessionType.awsCliLogin) {
+        this.appProviderService.awsCliLoginService.assertConsoleSupported(session);
+      }
       const credentials = await (this.getSelectedSessionService(session) as AwsSessionService).generateCredentials(session.sessionId);
       const sessionRegion = session.region;
       const sessionDuration = this.appProviderService.workspaceService.getWorkspace().samlRoleSessionDuration;

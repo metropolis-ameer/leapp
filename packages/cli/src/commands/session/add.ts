@@ -18,6 +18,7 @@ import {
   roleSessionName,
   secretKey,
   sessionType,
+  sourceProfile,
 } from "../../flags";
 import { SessionType } from "@noovolari/leapp-core/models/session-type";
 import { constants } from "@noovolari/leapp-core/models/constants";
@@ -28,10 +29,11 @@ export default class AddSession extends LeappCommand {
 
   static examples = [
     "$leapp session add",
-    "$leapp session add --providerType [aws] --sessionType [awsIamRoleFederated, awsIamRoleChained, awsIamUser] --region [AWSREGION] --sessionName NAME ...[combination of flags relative to the session]",
+    "$leapp session add --providerType [aws] --sessionType [awsIamRoleFederated, awsIamRoleChained, awsIamUser, awsCliLogin] --region [AWSREGION] --sessionName NAME ...[combination of flags relative to the session]",
     "$leapp session add --providerType aws --sessionType awsIamRoleFederated --sessionName NAME --region AWSREGION --idpArn IDPARN --idpUrl IDPURL --profileId PROFILEID --roleArn ROLEARN",
     "$leapp session add --providerType aws --sessionType awsIamRoleChained --sessionName NAME --region AWSREGION --profileId PROFILEID --roleArn ROLEARN --parentSessionId ID (--roleSessionName ROLESESSIONNAME)",
     "$leapp session add --providerType aws --sessionType awsIamUser --sessionName NAME --region AWSREGION --profileId PROFILEID --accessKey ACCESSKEY --secretKey SECRETKEY (--mfaDevice MFADEVICEARN)",
+    "$leapp session add --providerType aws --sessionType awsCliLogin --sessionName NAME --region AWSREGION --sourceProfile SOURCEPROFILE --profileId DESTINATIONPROFILEID",
   ];
 
   static flags = {
@@ -50,6 +52,7 @@ export default class AddSession extends LeappCommand {
     //subscriptionId,
     //tenantId,
     sessionType,
+    sourceProfile,
   };
 
   constructor(argv: string[], config: Config, private createIdpUrlCommand: CreateIdpUrl = new CreateIdpUrl(argv, config)) {
@@ -120,9 +123,14 @@ export default class AddSession extends LeappCommand {
           message: field.message,
           type: field.type,
           choices: field.choices?.map((choice: any) => ({ name: choice.fieldName, value: choice.fieldValue })),
+          ...(field.creationRequestField === "sourceProfile"
+            ? { validate: (value: string) => this.isValidSourceProfile(value) || "Source profile must not be blank or contain line breaks" }
+            : {}),
         },
       ]);
       let fieldAnswerValue = fieldAnswer[field.creationRequestField];
+      this.checkSourceProfileValidity(fieldAnswerValue, field);
+      this.checkParentIdValidity(fieldAnswerValue, field);
       if (field instanceof IdpUrlAccessMethodField && field.isIdpUrlToCreate(fieldAnswerValue)) {
         const newIdpUrl = await this.createIdpUrlCommand.promptAndCreateIdpUrl();
         fieldAnswerValue = newIdpUrl.id;
@@ -149,6 +157,29 @@ export default class AddSession extends LeappCommand {
   private verifyFlags(flags: any) {
     if (flags.providerType === undefined || flags.sessionType === undefined) {
       throw new Error("flags --providerType and --sessionType must always be specified");
+    }
+    if (flags.sessionType === SessionType.awsCliLogin) {
+      if (flags.providerType !== CloudProviderType.aws) {
+        throw new Error("AWS CLI Login requires providerType aws");
+      }
+      const missing = ["sessionName", "region", "sourceProfile"].filter((field) => typeof flags[field] !== "string" || !flags[field].trim());
+      if (missing.length) {
+        throw new Error(`missing values for flags: ${missing.map((field) => `--${field}`).join(", ")}`);
+      }
+      const invalid = ["accessKey", "secretKey", "mfaDevice", "idpArn", "idpUrl", "roleArn", "roleSessionName", "parentSessionId"].filter(
+        (field) => flags[field] !== undefined
+      );
+      if (invalid.length) {
+        throw new Error(`AWS CLI Login does not support flags: ${invalid.map((field) => `--${field}`).join(", ")}`);
+      }
+      if (flags.profileId !== undefined && !flags.profileId.trim()) {
+        throw new Error("Invalid Profile Id");
+      }
+      this.checkSourceProfileValidity(flags.sourceProfile, { creationRequestField: "sourceProfile" });
+      return true;
+    }
+    if (flags.sourceProfile !== undefined) {
+      throw new Error("--sourceProfile is only supported for awsCliLogin sessions");
     }
     switch (flags.sessionType) {
       case SessionType.awsIamRoleFederated:
@@ -201,7 +232,7 @@ export default class AddSession extends LeappCommand {
         }
         break;
       default:
-        throw new Error("invalid session type value. Valid values are: awsIamRoleFederated, awsIamRoleChained, awsIamUser");
+        throw new Error("invalid session type value. Valid values are: awsIamRoleFederated, awsIamRoleChained, awsIamUser, awsCliLogin");
     }
 
     const firstStep =
@@ -268,6 +299,7 @@ export default class AddSession extends LeappCommand {
     const fieldValuesMap = new Map<string, string>();
     for (const field of selectedAccessMethod.accessMethodFields) {
       let fieldAnswerValue = flags[field.creationRequestField];
+      this.checkSourceProfileValidity(fieldAnswerValue, field);
       this.checkAnomalousFieldForAccessMethod(fieldAnswerValue, field);
       fieldAnswerValue = this.setDefaultParameterValues(fieldAnswerValue, field);
       this.checkRegionOrLocationValidity(field, flags, fieldAnswerValue);
@@ -362,6 +394,9 @@ export default class AddSession extends LeappCommand {
   }
 
   private checkParentIdValidity(fieldAnswerValue: any, field: any) {
+    if (field.creationRequestField !== "parentSessionId") {
+      return;
+    }
     const found = this.cliProviderService.sessionManagementService.getSessions().find((s) => s.sessionId === fieldAnswerValue);
 
     if (!found && field.creationRequestField === "parentSessionId") {
@@ -370,10 +405,20 @@ export default class AddSession extends LeappCommand {
     if (
       found &&
       // (found.type === SessionType.awsIamRoleChained || found.type === SessionType.azure) &&
-      found.type === SessionType.awsIamRoleChained &&
+      (found.type === SessionType.awsIamRoleChained || found.type === SessionType.awsCliLogin) &&
       field.creationRequestField === "parentSessionId"
     ) {
       throw new Error(`Invalid Parent: cannot chain from ${found.type.toString()}`);
+    }
+  }
+
+  private isValidSourceProfile(value: string): boolean {
+    return typeof value === "string" && value.trim().length > 0 && !/[\r\n]/.test(value);
+  }
+
+  private checkSourceProfileValidity(value: string, field: any): void {
+    if (field.creationRequestField === "sourceProfile" && !this.isValidSourceProfile(value)) {
+      throw new Error("Source profile must not be blank or contain line breaks");
     }
   }
 }

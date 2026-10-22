@@ -393,7 +393,13 @@ describe("CurrentSession", () => {
 
     const sessionTypes = command.getProviderAssociatedSessionTypes(provider);
 
-    expect(sessionTypes).toEqual([SessionType.awsIamUser, SessionType.awsIamRoleChained, SessionType.awsIamRoleFederated, SessionType.awsSsoRole]);
+    expect(sessionTypes).toEqual([
+      SessionType.awsIamUser,
+      SessionType.awsIamRoleChained,
+      SessionType.awsIamRoleFederated,
+      SessionType.awsSsoRole,
+      SessionType.awsCliLogin,
+    ]);
   });
 
   test("getProviderAssociatedSessionTypes - azureProvider", () => {

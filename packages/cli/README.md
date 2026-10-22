@@ -15,6 +15,7 @@ For more information about the project visit the [site](www.leapp.cloud).
 
 <!-- toc -->
 * [Usage](#usage)
+* [AWS CLI Login sessions](#aws-cli-login-sessions)
 * [Commands](#commands)
 * [Command Topics](#command-topics)
 <!-- tocstop -->
@@ -32,6 +33,46 @@ USAGE
 ...
 ```
 <!-- usagestop -->
+# AWS CLI Login sessions
+
+On macOS, install AWS CLI **2.32.0 or later** and keep Leapp Desktop running.
+This session type uses `aws login`, not IAM Identity Center's `aws sso login`.
+Use an existing AWS CLI login profile or provide a new source profile name;
+Start opens Terminal and the browser when interactive authentication is needed.
+The login identity must already have the AWS permissions needed for your work;
+Leapp does not assume another role or add IAM permissions.
+
+```sh
+leapp profile list
+leapp session add --providerType aws --sessionType awsCliLogin \
+  --sessionName "AWS login" --region eu-west-1 \
+  --sourceProfile login-source --profileId DESTINATION_PROFILE_ID
+leapp session start "AWS login"
+leapp session list -x
+leapp session current --profile leapp-destination --provider aws
+leapp session stop "AWS login"
+```
+
+`--sourceProfile` is the AWS CLI profile **name**, while `--profileId` is the
+Leapp-managed destination profile **ID** from `leapp profile list`. Omitting
+`--profileId` uses Leapp's default destination. Source and destination must differ,
+and each source may belong to only one Leapp session. Leapp respects AWS
+configuration/cache location overrides and never copies AWS refresh tokens.
+
+Start reuses valid login credentials and authenticates only when required.
+Leapp Desktop owns refresh while the session is active; reauthentication may open
+Terminal again. `session generate SESSIONID` retains credential-process mode and
+writes only its JSON credential result to stdout.
+
+AWS CLI Login sessions cannot be role-chain parents or use SSM. Console access
+currently reports an explicit unavailable error: IAM-user console access is
+unsupported, and federated-role console access has not been verified. There is
+no generic console URL fallback or additional role assumption.
+
+Stop removes Leapp's destination credentials and logs out the source profile.
+This can affect other tools sharing that login; logout does not guarantee
+revocation of already issued credentials or browser sessions.
+
 # Commands
 <!-- commands -->
 # Command Topics

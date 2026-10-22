@@ -27,8 +27,8 @@
     </form>
   </div>
   <br>
-  <button type="button" (click)="changeProfile();" [disabled]="!selectedProfile"
-          [ngClass]="(!selectedProfile) ? 'btn-control mat-button-disabled': 'btn-control'">Save Profile
+  <button type="button" (click)="changeProfile();" [disabled]="!selectedProfile || submitting"
+          [ngClass]="(!selectedProfile || submitting) ? 'btn-control mat-button-disabled': 'btn-control'">Save Profile <i *ngIf="submitting" class="fa fa-spinner fa-spin"></i>
   </button>
   <a (click)="closeModal();">Cancel</a>
 </div>

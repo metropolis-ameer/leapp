@@ -25,6 +25,7 @@ import { SessionStatus } from "@noovolari/leapp-core/models/session-status";
 import { OptionsService } from "../../services/options.service";
 import { AwsIamUserSession } from "@noovolari/leapp-core/models/aws/aws-iam-user-session";
 import { FilteringPipe } from "./pipes/filtering.pipe";
+import { DetailPipe } from "./pipes/detail.pipe";
 
 export const globalOrderingFilter = new BehaviorSubject<Session[]>([]);
 
@@ -275,6 +276,8 @@ export class SessionsComponent implements OnInit, OnDestroy {
 
   getRole(s: Session): string {
     switch (s.type) {
+      case SessionType.awsCliLogin:
+        return new DetailPipe().transform(s);
       case SessionType.awsIamRoleFederated:
         return (s as AwsIamRoleFederatedSession).roleArn.split("role/")[1];
       case SessionType.azure:

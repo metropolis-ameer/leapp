@@ -8,6 +8,7 @@ import { AwsIamRoleFederatedSession } from "@noovolari/leapp-core/models/aws/aws
 import { AwsIamRoleChainedSession } from "@noovolari/leapp-core/models/aws/aws-iam-role-chained-session";
 import { AwsSsoRoleSession } from "@noovolari/leapp-core/models/aws/aws-sso-role-session";
 import { AzureSession } from "@noovolari/leapp-core/models/azure/azure-session";
+import { AwsCliLoginSession } from "@noovolari/leapp-core/models/aws/aws-cli-login-session";
 import { Args } from "@oclif/core";
 
 export default class StopSession extends LeappCommand {
@@ -67,11 +68,16 @@ export default class StopSession extends LeappCommand {
   }
 
   async stopSession(session: Session): Promise<void> {
-    if (session.status === SessionStatus.inactive) {
+    if (session.status === SessionStatus.inactive && session.type !== SessionType.awsCliLogin) {
       throw new Error("session already stopped");
     }
     try {
       const sessionService = this.cliProviderService.sessionFactory.getSessionService(session.type);
+      if (session.type === SessionType.awsCliLogin) {
+        this.warn(
+          "Stopping logs out the AWS CLI source profile and can affect other tools sharing it. Issued credentials and browser sessions may remain valid."
+        );
+      }
       await sessionService.stop(session.sessionId);
       this.log("session stopped");
     } finally {
@@ -111,6 +117,9 @@ export default class StopSession extends LeappCommand {
         return (session as AwsIamRoleChainedSession).roleArn.split("role/")[1] || "";
       case SessionType.awsIamUser:
         return "";
+      case SessionType.awsCliLogin:
+        const login = session as AwsCliLoginSession;
+        return [login.sourceProfile, login.awsAccount?.accountId, login.principalArn].filter(Boolean).join(" - ");
       case SessionType.awsSsoRole:
         const splittedRoleArn = (session as AwsSsoRoleSession).roleArn.split("/");
         splittedRoleArn.splice(0, 1);

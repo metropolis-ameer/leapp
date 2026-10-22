@@ -48,6 +48,7 @@ describe("sessionFactory", () => {
       SessionType.awsIamRoleFederated,
       SessionType.awsIamRoleChained,
       SessionType.awsSsoRole,
+      SessionType.awsCliLogin,
     ]);
 
     expect(sessionFactory.getCompatibleTypes(SessionType.aws)).toEqual([
@@ -55,11 +56,24 @@ describe("sessionFactory", () => {
       SessionType.awsIamRoleFederated,
       SessionType.awsIamRoleChained,
       SessionType.awsSsoRole,
+      SessionType.awsCliLogin,
     ]);
 
     expect(sessionFactory.getCompatibleTypes(SessionType.azure)).toEqual([SessionType.azure]);
     expect(sessionFactory.getCompatibleTypes(SessionType.awsIamRoleFederated)).toEqual([SessionType.awsIamRoleFederated]);
 
     expect(sessionFactory.getCompatibleTypes("wrong-type" as any)).toEqual([]);
+  });
+
+  test("registers AWS CLI Login last without changing legacy service ordering", async () => {
+    const service: any = { create: jest.fn(), setSessionServiceResolver: jest.fn() };
+    const factory = new SessionFactory(null, null, null, null, null, null, service);
+    expect(factory.getSessionService(SessionType.awsCliLogin)).toBe(service);
+    const request = { sessionName: "Login", sourceProfile: "source", region: "us-east-1", profileId: "output" };
+    await factory.createSession(SessionType.awsCliLogin, request);
+    expect(service.create).toHaveBeenCalledWith(request);
+    expect(factory.getCompatibleTypes(SessionType.awsCliLogin)).toEqual([SessionType.awsCliLogin]);
+    expect(service.setSessionServiceResolver).toHaveBeenCalled();
+    expect(() => new SessionFactory(null, null, null, null, null, null).getSessionService(SessionType.awsCliLogin)).toThrow("not configured");
   });
 });

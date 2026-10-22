@@ -64,7 +64,7 @@ export class BottomBarComponent implements OnInit {
   }
 
   async openAwsWebConsole(): Promise<void> {
-    if (this.optionsService.extensionEnabled && !this.isWebConsoleFetching) {
+    if (this.optionsService.extensionEnabled && !this.isWebConsoleFetching && this.selectedSession.type !== SessionType.awsCliLogin) {
       await this.extensionWebsocketService.openWebConsoleWithExtension(this.selectedSession);
     } else {
       await this.selectedSessionActionsService.openAwsWebConsole(this.selectedSession);

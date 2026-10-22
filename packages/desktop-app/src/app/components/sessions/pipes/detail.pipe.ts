@@ -5,13 +5,23 @@ import { AwsIamRoleFederatedSession } from "@noovolari/leapp-core/models/aws/aws
 import { AzureSession } from "@noovolari/leapp-core/models/azure/azure-session";
 import { AwsSsoRoleSession } from "@noovolari/leapp-core/models/aws/aws-sso-role-session";
 import { AwsIamRoleChainedSession } from "@noovolari/leapp-core/models/aws/aws-iam-role-chained-session";
+import { AwsCliLoginSession } from "@noovolari/leapp-core/models/aws/aws-cli-login-session";
 
 @Pipe({
   name: "detail",
 })
 export class DetailPipe implements PipeTransform {
-  transform(session: Session): string {
+  transform(session: Session, principalArn?: string, sourceProfile?: string, accountId?: string): string {
     switch (session.type) {
+      case SessionType.awsCliLogin:
+        const loginSession = session as AwsCliLoginSession;
+        return [
+          sourceProfile ?? loginSession.sourceProfile,
+          accountId ?? loginSession.awsAccount?.accountId,
+          principalArn ?? loginSession.principalArn,
+        ]
+          .filter(Boolean)
+          .join(" - ");
       case SessionType.awsIamRoleFederated:
         return (session as AwsIamRoleFederatedSession).roleArn.split("role/")[1] || "";
       case SessionType.azure:

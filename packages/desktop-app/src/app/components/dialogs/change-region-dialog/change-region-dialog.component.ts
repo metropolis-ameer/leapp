@@ -7,6 +7,7 @@ import { AzureCoreService } from "@noovolari/leapp-core/services/azure-core-serv
 import { Session } from "@noovolari/leapp-core/models/session";
 import { RegionsService } from "@noovolari/leapp-core/services/regions-service";
 import { MessageToasterService, ToastLevel } from "../../../services/message-toaster.service";
+import { AwsCliLoginSession } from "@noovolari/leapp-core/models/aws/aws-cli-login-session";
 
 @Component({
   selector: "app-change-region-dialog",
@@ -46,6 +47,22 @@ export class ChangeRegionDialogComponent implements OnInit {
   }
 
   async changeRegion(): Promise<void> {
+    if (this.session.type === SessionType.awsCliLogin) {
+      try {
+        const session = this.session as AwsCliLoginSession;
+        await this.appProviderService.awsCliLoginService.update(session.sessionId, {
+          sessionName: session.sessionName,
+          sourceProfile: session.sourceProfile,
+          profileId: session.profileId,
+          region: this.selectedRegion,
+        });
+        this.messageToasterService.toast("Default region has been changed!", ToastLevel.success, "Region changed!");
+        this.closeModal();
+      } catch (error) {
+        this.messageToasterService.toast(error.message, ToastLevel.error);
+      }
+      return;
+    }
     await this.regionService.changeRegion(this.session, this.selectedRegion);
     this.messageToasterService.toast("Default region has been changed!", ToastLevel.success, "Region changed!");
     this.closeModal();

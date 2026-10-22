@@ -389,6 +389,9 @@ export class CommandBarComponent implements OnInit, OnDestroy, AfterContentCheck
         test ||= (session as any).roleArn?.toLowerCase().indexOf(searchText.toLowerCase()) > -1;
         test ||= (session as any).idpArn?.toLowerCase().indexOf(searchText.toLowerCase()) > -1;
         test ||= (session as any).roleSessionName?.toLowerCase().indexOf(searchText.toLowerCase()) > -1;
+        test ||= (session as any).sourceProfile?.toLowerCase().indexOf(searchText.toLowerCase()) > -1;
+        test ||= (session as any).principalArn?.toLowerCase().indexOf(searchText.toLowerCase()) > -1;
+        test ||= (session as any).awsAccount?.accountId?.toLowerCase().indexOf(searchText.toLowerCase()) > -1;
 
         try {
           test ||=
@@ -531,6 +534,7 @@ export class CommandBarComponent implements OnInit, OnDestroy, AfterContentCheck
     ];
 
     this.types = [
+      { show: true, id: SessionType.awsCliLogin, category: "Amazon AWS", name: "AWS CLI Login", value: false },
       { show: true, id: SessionType.awsIamRoleFederated, category: "Amazon AWS", name: "IAM Role Federated", value: false },
       { show: true, id: SessionType.awsIamUser, category: "Amazon AWS", name: "IAM User", value: false },
       { show: true, id: SessionType.awsIamRoleChained, category: "Amazon AWS", name: "IAM Role Chained", value: false },

@@ -13,6 +13,104 @@ describe("AddSession", () => {
     return command;
   };
 
+  const loginFlags = {
+    providerType: "aws",
+    sessionType: SessionType.awsCliLogin,
+    sessionName: "CLI login",
+    sourceProfile: "login-source",
+    region: "eu-west-1",
+  };
+
+  test.each([undefined, "", "   ", "\n"])("AWS CLI Login rejects blank source profile %p", (sourceProfile) => {
+    const command = getTestCommand();
+    expect(() => (command as any).verifyFlags({ ...loginFlags, sourceProfile })).toThrow("--sourceProfile");
+  });
+
+  test.each(["accessKey", "secretKey", "mfaDevice", "idpArn", "idpUrl", "roleArn", "roleSessionName", "parentSessionId"])(
+    "AWS CLI Login rejects incompatible --%s",
+    (flag) => {
+      const command = getTestCommand();
+      expect(() => (command as any).verifyFlags({ ...loginFlags, [flag]: "value" })).toThrow(`--${flag}`);
+    }
+  );
+
+  test("sourceProfile is not accepted on other session types", () => {
+    const command = getTestCommand();
+    expect(() => (command as any).verifyFlags({ ...loginFlags, sessionType: SessionType.awsIamUser })).toThrow(
+      "--sourceProfile is only supported for awsCliLogin"
+    );
+  });
+
+  test.each(["eu-west-1", "invalid-region"])("AWS CLI Login extracts source and default destination with region %s", async (selectedRegion) => {
+    const fields = ["sessionName", "sourceProfile", "region", "profileId"].map((creationRequestField) => ({ creationRequestField }));
+    const accessMethod = {
+      sessionType: SessionType.awsCliLogin,
+      accessMethodFields: fields,
+      getSessionCreationRequest: (params: Map<string, string>) => ({
+        sessionName: params.get("sessionName"),
+        sourceProfile: params.get("sourceProfile"),
+        region: params.get("region"),
+        profileId: params.get("profileId"),
+      }),
+    };
+    const provider = {
+      cloudProviderService: { creatableAccessMethods: () => [accessMethod] },
+      sessionFactory: { createSession: jest.fn() },
+      workspaceService: { getDefaultProfileId: () => "destination-id" },
+      namedProfilesService: { getNamedProfiles: () => [{ id: "destination-id", name: "destination" }] },
+      awsCoreService: { getRegions: () => [{ region: "eu-west-1" }] },
+      remoteProceduresClient: { refreshSessions: jest.fn() },
+    };
+    const command = getTestCommand(provider, null, [
+      "--providerType",
+      "aws",
+      "--sessionType",
+      "awsCliLogin",
+      "--sessionName",
+      "CLI login",
+      "--sourceProfile",
+      "login-source",
+      "--region",
+      selectedRegion,
+    ]);
+    command.log = jest.fn();
+    if (selectedRegion === "invalid-region") {
+      await expect(command.run()).rejects.toThrow("AWS Region not valid");
+      expect(provider.sessionFactory.createSession).not.toHaveBeenCalled();
+    } else {
+      await command.run();
+      expect(provider.sessionFactory.createSession).toHaveBeenCalledWith(SessionType.awsCliLogin, {
+        sessionName: "CLI login",
+        sourceProfile: "login-source",
+        region: "eu-west-1",
+        profileId: "destination-id",
+      });
+      expect(provider.remoteProceduresClient.refreshSessions).toHaveBeenCalled();
+    }
+  });
+
+  test("AWS CLI Login validates interactive source profile", async () => {
+    const prompt = jest.fn(async () => ({ sourceProfile: "  " }));
+    const command = getTestCommand({ inquirer: { prompt } });
+    await expect(
+      command.chooseAccessMethodParams({
+        accessMethodFields: [{ creationRequestField: "sourceProfile" }],
+      } as any)
+    ).rejects.toThrow("Source profile must not be blank");
+    const question = (prompt.mock.calls[0] as any)[0][0];
+    expect(question.validate("source")).toBe(true);
+    expect(question.validate(" ")).not.toBe(true);
+  });
+
+  test("AWS CLI Login cannot be used as a role assumer", () => {
+    const command = getTestCommand({
+      sessionManagementService: { getSessions: () => [{ sessionId: "login-id", type: SessionType.awsCliLogin }] },
+    });
+    expect(() => (command as any).checkParentIdValidity("login-id", { creationRequestField: "parentSessionId" })).toThrow(
+      "cannot chain from awsCliLogin"
+    );
+  });
+
   test("Flags - test all flags and combinations", async () => {
     const cliProviderService: any = {
       sessionManagementService: {

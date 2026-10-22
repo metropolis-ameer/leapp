@@ -1,5 +1,6 @@
 import { CloudProviderService } from "@noovolari/leapp-core/services/cloud-provider-service";
 import { AwsIamUserService } from "@noovolari/leapp-core/services/session/aws/aws-iam-user-service";
+import { AwsCliLoginService } from "@noovolari/leapp-core/services/session/aws/aws-cli-login-service";
 import { FileService } from "@noovolari/leapp-core/services/file-service";
 import { AwsCoreService } from "@noovolari/leapp-core/services/aws-core-service";
 import { LogService } from "@noovolari/leapp-core/services/log-service";
@@ -97,6 +98,15 @@ export class CliProviderService {
   private azureIntegrationServiceInstance: AzureIntegrationService;
   private teamServiceInstance: TeamService;
   private localstackSessionServiceInstance: LocalstackSessionService;
+  private awsCliLoginServiceInstance: AwsCliLoginService;
+
+  public get awsCliLoginService(): AwsCliLoginService {
+    if (!this.awsCliLoginServiceInstance) {
+      this.awsCliLoginServiceInstance = new AwsCliLoginService(this.behaviouralSubjectService, this.repository,
+        this.cliNativeService, this.fileService, this.awsCoreService, this.logService);
+    }
+    return this.awsCliLoginServiceInstance;
+  }
 
   public get azureIntegrationService(): AzureIntegrationService {
     if (!this.azureIntegrationServiceInstance) {
@@ -289,7 +299,7 @@ export class CliProviderService {
   get sessionFactory(): SessionFactory {
     if (!this.sessionFactoryInstance) {
       this.sessionFactoryInstance = new SessionFactory(this.awsIamUserService, this.awsIamRoleFederatedService,
-        this.awsIamRoleChainedService, this.awsSsoRoleService, this.azureSessionService, this.localstackSessionService);
+        this.awsIamRoleChainedService, this.awsSsoRoleService, this.azureSessionService, this.localstackSessionService, this.awsCliLoginService);
     }
     return this.sessionFactoryInstance;
   }

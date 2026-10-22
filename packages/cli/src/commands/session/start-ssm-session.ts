@@ -5,6 +5,7 @@ import { AwsSessionService } from "@noovolari/leapp-core/services/session/aws/aw
 import { CredentialsInfo } from "@noovolari/leapp-core/models/credentials-info";
 import { constants } from "@noovolari/leapp-core/models/constants";
 import { region, sessionId, ssmInstanceId } from "../../flags";
+import { SessionType } from "@noovolari/leapp-core/models/session-type";
 
 export default class StartSsmSession extends LeappCommand {
   static description = "Start an AWS SSM session";
@@ -56,7 +57,11 @@ export default class StartSsmSession extends LeappCommand {
   async selectSession(): Promise<Session> {
     const availableSessions = this.cliProviderService.sessionManagementService
       .getSessions()
-      .filter((session: Session) => this.cliProviderService.sessionFactory.getSessionService(session.type) instanceof AwsSessionService);
+      .filter(
+        (session: Session) =>
+          session.type !== SessionType.awsCliLogin &&
+          this.cliProviderService.sessionFactory.getSessionService(session.type) instanceof AwsSessionService
+      );
     if (availableSessions.length === 0) {
       throw new Error("no sessions available");
     }
@@ -72,6 +77,9 @@ export default class StartSsmSession extends LeappCommand {
   }
 
   async generateCredentials(session: Session): Promise<CredentialsInfo> {
+    if (session.type === SessionType.awsCliLogin) {
+      throw new Error("AWS CLI Login sessions do not support SSM");
+    }
     const sessionService = this.cliProviderService.sessionFactory.getSessionService(session.type) as AwsSessionService;
     return await sessionService.generateCredentials(session.sessionId);
   }

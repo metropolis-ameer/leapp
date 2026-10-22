@@ -4,6 +4,7 @@ import { Workspace } from "@noovolari/leapp-core/models/workspace";
 import { AwsIamRoleFederatedSession } from "@noovolari/leapp-core/models/aws/aws-iam-role-federated-session";
 import { AzureSession } from "@noovolari/leapp-core/models/azure/azure-session";
 import { AwsSsoRoleSession } from "@noovolari/leapp-core/models/aws/aws-sso-role-session";
+import { AwsCliLoginSession } from "@noovolari/leapp-core/models/aws/aws-cli-login-session";
 
 @Pipe({
   name: "querying",
@@ -20,6 +21,9 @@ export class QueryingPipe implements PipeTransform {
 
         return (
           s.sessionName.toLowerCase().indexOf(query.toLowerCase()) > -1 ||
+          (s as AwsCliLoginSession).sourceProfile?.toLowerCase().indexOf(query.toLowerCase()) > -1 ||
+          (s as AwsCliLoginSession).principalArn?.toLowerCase().indexOf(query.toLowerCase()) > -1 ||
+          (s as AwsCliLoginSession).awsAccount?.accountId?.toLowerCase().indexOf(query.toLowerCase()) > -1 ||
           // eslint-disable-next-line max-len
           ((s as AwsIamRoleFederatedSession).roleArn && (s as AwsIamRoleFederatedSession).roleArn.toLowerCase().indexOf(query.toLowerCase()) > -1) ||
           idpID.indexOf((s as AwsIamRoleFederatedSession).idpUrlId) > -1 ||

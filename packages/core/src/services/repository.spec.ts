@@ -69,6 +69,22 @@ describe("Repository", () => {
     };
   });
 
+  test("prevents other session types and profile renames from overwriting AWS CLI Login sources", () => {
+    mockedWorkspace.profiles = [
+      { id: "source-id", name: "login-source" },
+      { id: "destination-id", name: "destination" },
+    ];
+    mockedWorkspace.sessions = [
+      { ...mockedSession, sessionId: "login", type: SessionType.awsCliLogin, sourceProfile: "login-source", profileId: "destination-id" },
+    ];
+    expect(() => repository.addSession({ ...mockedSession, profileId: "source-id" })).toThrow("reserved");
+    expect(() => repository.updateSession("login", { ...mockedWorkspace.sessions[0], profileId: "source-id" })).toThrow("reserved");
+    expect(() => repository.updateProfile("destination-id", "login-source")).toThrow("reserved");
+    expect(mockedWorkspace.profiles[1].name).toBe("destination");
+    expect(mockedWorkspace.sessions).toHaveLength(1);
+    expect(repository.listAssumable()).toEqual([]);
+  });
+
   test("get workspace() - returns the private workspace", () => {
     const workspace = repository.workspace;
     expect(workspace).toBe(mockedWorkspace);
